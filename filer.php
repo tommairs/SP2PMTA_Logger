@@ -6,11 +6,7 @@
   $f = "data_1";          // location of raw text file log data
   $logname = "pmtalogs";  // final storage location of converted log files under /var/log/
   $CustomKey = "";        // If you have custom metadata to log from webhooks, set that vriable name here 
-  $Separator = ",";       // Set the type of data separator used in the final log output
-  $BouncelogName = "boouncelog";  // Filename for the log
-  $DeliverylogName = "boouncelog";  // Filename for the log
-  $ReceptionlogName = "boouncelog";  // Filename for the log
-  $Name = "boouncelog";  // Filename for the log
+  $Sep = ",";       // Set the type of data separator used in the final log output
 
   $logdir = "/var/log/". $logname ."/";
   $dir    = '/var/www/html/whc/data/';
@@ -55,29 +51,32 @@ function extracttologs($logarray,$logdir){
         $rm = $two['rcpt_meta'];
         if ($two['rcpt_meta']['$CustomKey']){
           $cp = explode("|||",$two['rcpt_meta']['$CustomKey']);
-          $vctx_sip = $cp[1];
+          $Header_XXX = $cp[1];
           $vctx_mid = $cp[0];
         }
         if ($two['friendly_from']){
           $from = explode("@",$two['friendly_from']);
           $m = $from[0];
           $M = $from[1];
+          $origFrom = $two['friendly_from'];
         }
         if ($two['rcpt_to']){
           $to = explode("@",$two['rcpt_to']);
           $r = $to[0];
           $R = $to[1];
+          $rcptTo = $two['rcpt_to'];
         }
-        $t = $two['timestamp'];
-        $i = $two['message_id'];
+        $timeLogged = $two['timestamp'];
+        $dlvType = $two['delv_method'];
+        $JobID = $two['message_id'];
         $g = $two['binding_group'];
         $N = $two['num_retries'];
         $C = $two['bounce_class'];
-        $b = $two['binding'];
-        $H = $two['ip_address'];
-        $s = $two['msg_size'];
-        $n = $two['raw_reason'];
-        $n = str_replace("\r\n", " ", $n);  //Clean up carriage returns in bounce messages
+        $vmta = $two['binding'];
+        $dlvDestinationIp = $two['ip_address'];
+        $dlvSize = $two['msg_size'];
+        $dsnStatus = $two['raw_reason'];
+        $dsnStatus = str_replace("\r\n", " ", $dsnStatus);  //Clean up carriage returns in bounce messages
 
         if (($i) AND ($eventtype)){
 
@@ -87,35 +86,49 @@ function extracttologs($logarray,$logdir){
 
             // Write out the records
 
+        $logstring .= $timeLogged.",";
+        $logstring .= $timeLogged.",";
+        $logstring .= $timeLogged.",";
+        $logstring .= $origFrom.",";
+        $logstring .= $rcptTo.",";
+        $logstring .= $orcpt.",";
+        $logstring .= $dsnAction.",";
+        $logstring .= $dsnStatus.",";
+        $logstring .= $dsnDiag.",";
+        $logstring .= $dsnMta.",";
+        $logstring .= $srcType.",";
+        $logstring .= $srcMta.",";
+        $logstring .= $dlvType.",";
+        $logstring .= $dlvSourceIp.",";
+        $logstring .= $dlvDestinationIp.",";
+        $logstring .= $dlvEsmtpAvailable.",";
+        $logstring .= $dlvSize.",";
+        $logstring .= $vmta.",";
+        $logstring .= $jobId.",";
+        $logstring .= $envId.",";
+        $logstring .= $header_XXX;
+            
+        if ($two['type'] == "injection"){
+          $bouncelog .= "r,".$logstring;
+        }
+            
         if ($two['type'] == "out_of_band"){
-          $bouncelog .= "".$t."@".$i."@<bid>@<cid>@B@".$r."@".$R."@".$m."@".$M."@".$g."@".$b."@21@".$C."@".$s."@".$H."@".$n."";
+          $bouncelog .= "b,".$logstring;
         }
 
         if ($two['type'] == "policy_rejection"){
-          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
-          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||P||".$n."\r\n";
+          $rejectlog .= "b,".$logstring;
         }
 
         if ($two['type'] == "bounce"){
-          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
-          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||P||".$n."\r\n";
+          $bouncelog .= "b,".$logstring;
         }
         if ($two['type'] == "delay"){
-          $bounceloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";
-          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||T||".$n."\r\n";
+          $bounceloginband .= "t,".$logstring;
         }
 
-        if ($two['type'] == "delivery"){
-          //type, timeLogged,timeLogged,timeQueued,timeImprinted,origFrom,rcptTo,orcpt,dsnAction,dsnStatus,dsnDiag,dsnMta,srcType,srcMta,dlvType,dlvSourceIp,dlvDestinationIp,
-          //... dlvEsmtpAvailable,dlvSize,vmta,jobId,envId,header_XXX
-                    
-          // d, 1191435989,,,, testfrom@port25.com, testto@port25.com,,relayed,2.0.0(success),, [192.168.0.10](192.168.0.10),success,api,,smtp,10.25.25.211,10.25.25.20,,316,vmta0,0,0 
-          $deliveryloginband .= "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||D||".$n."\r\n";  
-          $successinband .=  "".$t."||".$vctx_sip."||".$m."||".$M."||".$i."||".$r."||".$R."||".$g."||".$b."||".$vctx_mid."||".$N."||".$C."||".$n."\r\n";  
-  
-          
-
-        
+        if ($two['type'] == "delivery"){        
+          $deliverylog .= "d,".$logstring;
         }
       }
 
@@ -134,19 +147,23 @@ echo "Writing delivery for $eventID\r\n";
         mkdir($logdir, 0777, true);
         chmod($logdir, 0666);
       }
-
-
-  $file = $BouncelogName;
+  
+  $file = "bouncelog.csv";
   $filecontents = $bouncelog;
   file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
 
-  $file = $BouncelogName;
+  $file = "bouncelog-inband.csv";
   $filecontents = $bounceloginband;
   file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
 
-  $file = $DeliverylogName;
+  $file = "deliverylog-inband.csv";
   $filecontents = $deliveryloginband;
   file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+
+  $file = "success-inband.csv";
+  $filecontents = $successinband;
+  file_put_contents($logdir.$file, $filecontents, FILE_APPEND);
+  
 
   chmod($logdir. "/*", 0666);
 }
