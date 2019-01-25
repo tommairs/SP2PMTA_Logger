@@ -2,6 +2,10 @@
 
 A tool to consume SparkPost Webhook data and convert it to PMTA standard CSV logs
 
+**NOTE: THIS CODE IS PROVIDED "AS_IS" WITHOUT WARRANTEE OF ANY KIND AND IS UNSUPPORTED CODE.**
+Feel free to drop any comments or issues in the ISSUES on this project and I'll ypdate as I can.
+
+
  - written to run on stand-alone CentOS-7 instance
  - consumes SparkPost webhooks (with custom meta-data)
  - decomposes and stores all data
